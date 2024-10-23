@@ -17,6 +17,7 @@ const imagemin = require('imagemin');
 const imageminMozjpeg = require('imagemin-mozjpeg');
 const imageminPngquant = require('imagemin-pngquant');
 const imageminWebp = require('imagemin-webp');
+const imageminGifsicle = require('imagemin-gifsicle');
 const svgmin = require('gulp-svgmin');
 
 
@@ -40,6 +41,10 @@ const paths = {
     },
     svgs: {
         src: 'app/images/*.svg',
+        dest: 'dist/images'
+    },
+    gifs: {
+        src: 'app/images/*.gif',
         dest: 'dist/images'
     }
 };
@@ -103,7 +108,7 @@ function convertFonts() {
         .pipe(gulp.dest(paths.font.dest));
 }
 
-function svgs() {
+function optimizeSvgs() {
     return gulp
         .src(paths.svgs.src)
         .pipe(svgmin({
@@ -133,10 +138,23 @@ function optimizeImages() {
             imageminPngquant({
                 quality: [0.6, 0.8]
             }),
-            imageminWebp({ quality: 50 })
+            imageminWebp({ quality: 50 }),
         ]
     }).then(files => {
         console.log('Images optimized:', files);
+    });
+}
+
+function optimizeGifs() {
+    return imagemin([paths.gifs.src], {
+        destination: paths.gifs.dest,
+        plugins: [
+            imageminGifsicle({ interlaced: true, optimizationLevel: 3 })
+        ]
+    }).then(files => {
+        console.log('GIFs optimized:', files);
+    }).catch(error => {
+        console.error('Error optimizing GIFs:', error);
     });
 }
 
@@ -149,11 +167,12 @@ exports.fonts = convertFonts;
 exports.styles = styles;
 exports.scripts = scripts;
 
-exports.svgs = svgs;
+exports.svgs = optimizeSvgs;
 exports.images = optimizeImages;
+exports.gifs = optimizeGifs;
 
 
 
 exports.watch = watchFiles;
-exports.media = gulp.series(svgs, optimizeImages);
-exports.build = gulp.series(styles, scripts, svgs, optimizeImages, convertFonts);
+exports.media = gulp.series(optimizeSvgs, optimizeImages, optimizeGifs);
+exports.build = gulp.series(styles, scripts, optimizeSvgs, optimizeImages, optimizeGifs, convertFonts);
